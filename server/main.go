@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/jiqiang/tst/server/message"
 )
 
 const (
@@ -19,6 +22,9 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func receiver(ws *websocket.Conn, out chan string) {
@@ -56,8 +62,12 @@ func sender(ws *websocket.Conn, in chan string) {
 
 func timer(out chan string) {
 	for {
-		data := fmt.Sprintf("TIMER: %s", time.Now().Format(time.ANSIC))
-		out <- data
+		data := message.Timer{
+			Type: "TIMER",
+			Time: time.Now().Format(time.ANSIC),
+		}
+		dataByte, _ := json.Marshal(data)
+		out <- string(dataByte)
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -72,7 +82,34 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	c := make(chan string)
 	go sender(ws, c)
 	go timer(c)
+	go updateAssets(c)
 	receiver(ws, c)
+}
+
+func getMockAssets() message.Assets {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	assets := []message.Asset{
+		message.Asset{Name: "asset-1", TimeElapsedSinceLastUpdate: r.Intn(30)},
+		message.Asset{Name: "asset-2", TimeElapsedSinceLastUpdate: r.Intn(30)},
+		message.Asset{Name: "asset-3", TimeElapsedSinceLastUpdate: r.Intn(30)},
+	}
+
+	data := message.Assets{
+		Type:   "ASSETS",
+		Assets: assets,
+	}
+
+	return data
+}
+
+func updateAssets(out chan string) {
+	for {
+		data := getMockAssets()
+		assetsStr, _ := json.Marshal(data)
+		out <- string(assetsStr)
+		time.Sleep(3 * time.Second)
+	}
 }
 
 func main() {

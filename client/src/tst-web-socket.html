@@ -1,0 +1,96 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/utils/async.html">
+
+<script>
+  class TstWebSocket extends Polymer.Element {
+    static get is() {
+      return "tst-web-socket";
+    }
+
+    static get properties() {
+      return {
+        url: String,
+
+        opened: {
+          type: Boolean,
+          value: false,
+          notify: true
+        },
+
+        auto: {
+          type: Boolean,
+          value: false
+        },
+
+        time: {
+          type: String,
+          value: "",
+          notify: true
+        },
+
+        assets: {
+          type: Array,
+          value: () => [],
+          notify: true
+        }
+      };
+    }
+
+    connectedCallback() {
+      super.connectedCallback();
+      if (this.auto) {
+        this.open();
+      }
+    }
+
+    disconnectedCallback() {
+      super.disconnectedCallback();
+      this.close();
+    }
+
+    open() {
+      this._websocket = new WebSocket(this.url);
+      this._websocket.onopen = (e) => {
+        this.opened = true;
+      }
+      this._websocket.onclose = (e) => {
+        this.opened = false;
+      }
+      this._websocket.onmessage = (e) => {
+        let message = JSON.parse(e.data);
+        switch(message.type) {
+          case "TIMER":
+            this.time = message.time;
+            break;
+          case "ASSETS":
+            this.assets = message.assets;
+            break;
+          default:
+        }
+      }
+      this._websocket.onerror = (e) => {
+        console.log(e);
+      }
+    }
+
+    close() {
+      if (this._websocket) {
+        this._websocket.close();
+        this._websocket = null;
+      }
+    }
+
+    send(data) {
+      if (!this._websocket) {
+        return;
+      }
+
+      if (this.json && data !== null && typeof data === "object") {
+        data = JSON.stringify(data);
+      }
+
+      this._websocket.send(data);
+    }
+  }
+  window.customElements.define(TstWebSocket.is, TstWebSocket);
+</script>

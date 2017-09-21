@@ -26,12 +26,38 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       <h1>View One</h1>
       <p>Ut labores minimum atomorum pro. Laudem tibique ut has.</p>
       <p>Lorem ipsum dolor sit amet, per in nusquam nominavi periculis, sit elit oportere ea.Lorem ipsum dolor sit amet, per in nusquam nominavi periculis, sit elit oportere ea.Cu mei vide viris gloriatur, at populo eripuit sit.</p>
+
+      <p>
+        <table>
+          <template is="dom-repeat" items="{{assets}}">
+            <tr>
+              <td>[[item.name]]</td>
+              <td>[[item.time_elapsed_since_last_update]]</td>
+            </tr>
+          </template>
+        </table>
+      </p>
+
     </div>
   </template>
 
   <script>
     class MyView1 extends Polymer.Element {
       static get is() { return 'my-view1'; }
+      static get properties() {
+        return {
+          assets: {
+            type: Array,
+            value: () => []
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+
+        ];
+      }
     }
 
     window.customElements.define(MyView1.is, MyView1);
