@@ -45,7 +45,8 @@
 
     disconnectedCallback() {
       super.disconnectedCallback();
-      this.close();
+      console.log("disconnect");
+      //this.close();
     }
 
     open() {
@@ -74,6 +75,7 @@
     }
 
     close() {
+      console.log("close")
       if (this._websocket) {
         this._websocket.close();
         this._websocket = null;
