@@ -3,13 +3,15 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/jiqiang/tst/server/apm"
+	"github.com/jiqiang/tst/server/dse"
 	"github.com/jiqiang/tst/server/message"
+	uiModel "github.com/jiqiang/tst/server/ui/model"
 )
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
@@ -165,24 +167,50 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 }
 
-func getMockAssets() message.Assets {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	assets := []message.Asset{
-		message.Asset{Name: "asset-1", TimeElapsedSinceLastUpdate: r.Intn(30)},
-		message.Asset{Name: "asset-2", TimeElapsedSinceLastUpdate: r.Intn(30)},
-		message.Asset{Name: "asset-3", TimeElapsedSinceLastUpdate: r.Intn(30)},
+func getMockAssets(cluster *dse.Cluster) (uiModel.Assets, error) {
+	assets, err := cluster.GetAssets()
+	if err != nil {
+		return uiModel.Assets{}, err
 	}
 
-	data := message.Assets{
+	uiAssets := uiModel.Assets{
 		Type:   "ASSETS",
 		Assets: assets,
 	}
 
-	return data
+	return uiAssets, nil
+}
+
+func populateAssetData() {
+	token, errs := apm.GetToken()
+	if errs != nil {
+		log.Fatal(errs)
+	}
+
+	sites, errs := apm.GetSites(token)
+	if errs != nil {
+		log.Fatal(errs)
+	}
+
+	cluster := dse.Cluster{}
+	cluster.Init()
+
+	for _, site := range sites {
+		assets, errs := apm.GetAssetsBySite(token, site.SourceKey)
+		if errs != nil {
+			log.Fatal(errs)
+		}
+		err := cluster.InsertAssets("ENTERPRISE_da4ab60d-2f69-4bdb-af18-6cafe981af82", site.Name, assets)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 }
 
 func main() {
+	//go populateAssetData()
+
 	hub := newHub()
 	go hub.run()
 
@@ -201,8 +229,10 @@ func main() {
 
 	// Write assets.
 	go func() {
+		cluster := dse.Cluster{}
+		cluster.Init()
 		for {
-			data := getMockAssets()
+			data, _ := getMockAssets(&cluster)
 			assetsStr, _ := json.Marshal(data)
 			hub.broadcast <- assetsStr
 			time.Sleep(3 * time.Second)

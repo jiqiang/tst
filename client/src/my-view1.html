@@ -31,7 +31,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <table>
           <template is="dom-repeat" items="{{assets}}">
             <tr>
-              <td>[[item.name]]</td>
+              <td>[[item.enterprise_source_key]]</td>
+              <td>[[item.site_name]]</td>
               <td>[[item.time_elapsed_since_last_update]]</td>
             </tr>
           </template>
